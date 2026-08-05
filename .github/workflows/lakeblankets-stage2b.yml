@@ -1,0 +1,42 @@
+name: Lake Blankets Stage 2B Candidate Acquisition
+
+on:
+  push:
+    branches:
+      - lakeblankets-stage2b-worker
+    paths:
+      - lakeblankets-stage2b/fetch_candidates.py
+      - .github/workflows/lakeblankets-stage2b.yml
+
+permissions:
+  contents: write
+
+jobs:
+  fetch-candidates:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Check out acquisition branch
+        uses: actions/checkout@v4
+        with:
+          ref: lakeblankets-stage2b-worker
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Fetch official ArcGIS candidate geometry
+        run: |
+          rm -rf lakeblankets-stage2b/network_output
+          python lakeblankets-stage2b/fetch_candidates.py
+        env:
+          OUTPUT_ROOT: lakeblankets-stage2b/network_output
+
+      - name: Commit preserved candidate responses
+        run: |
+          git config user.name "Lake Blankets Stage 2B Runner"
+          git config user.email "actions@users.noreply.github.com"
+          git add lakeblankets-stage2b/network_output
+          git commit -m "[stage2b-generated] Preserve official candidate responses" || exit 0
+          git push origin HEAD:lakeblankets-stage2b-worker
