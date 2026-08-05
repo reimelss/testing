@@ -1,0 +1,35 @@
+name: Lake Blankets Stage 2B Candidate Discovery
+
+on:
+  push:
+    paths:
+      - 'stage2b/**'
+      - '.github/workflows/stage2b-candidates.yml'
+  workflow_dispatch:
+
+jobs:
+  discover:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+          cache-dependency-path: stage2b/requirements.txt
+      - name: Install geospatial dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r stage2b/requirements.txt
+      - name: Query official GIS candidates
+        run: |
+          python stage2b/candidate_discovery.py stage2b/config.json candidate-output
+      - name: Upload candidate discovery artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: lake-blankets-stage2b-candidates
+          path: candidate-output/
+          if-no-files-found: error
+          retention-days: 14
