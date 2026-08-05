@@ -6,6 +6,7 @@ on:
       - lakeblankets-stage2b-worker
     paths:
       - lakeblankets-stage2b/fetch_candidates.py
+      - lakeblankets-stage2b/fetch_special_candidates.py
       - .github/workflows/lakeblankets-stage2b.yml
 
 permissions:
@@ -30,6 +31,7 @@ jobs:
         run: |
           rm -rf lakeblankets-stage2b/network_output
           python lakeblankets-stage2b/fetch_candidates.py
+          python lakeblankets-stage2b/fetch_special_candidates.py
         env:
           OUTPUT_ROOT: lakeblankets-stage2b/network_output
 
