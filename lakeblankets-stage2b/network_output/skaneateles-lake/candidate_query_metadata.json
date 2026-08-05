@@ -1,0 +1,26 @@
+{
+  "key": "skaneateles-lake",
+  "lake_id": "LB-NY-SKANEATELES-LAKE",
+  "lake_name": "Skaneateles Lake",
+  "endpoint": "https://gisservices.its.ny.gov/arcgis/rest/services/NYS_Hydrography/MapServer/9",
+  "where_clause": "UPPER(GPO_NAME) = 'SKANEATELES LAKE'",
+  "candidate_fields": [
+    "OBJECTID",
+    "GPO_NAME",
+    "GNIS_ID",
+    "AreaSqKm",
+    "Elevation",
+    "Permanent_Identifier",
+    "ReachCode",
+    "FType",
+    "FCode",
+    "FCode_Description",
+    "GPO_County",
+    "GPO_NAME_SOURCE",
+    "GPO_HUC"
+  ],
+  "accessed_utc": "2026-08-05T23:06:48.563536+00:00",
+  "candidate_count": 1,
+  "response_sha256": "8c048ff18d97c6dbef2aad56083106225ee4178444d4ca7fae7e7bf434de2b52",
+  "status": "CANDIDATE_REVIEW_REQUIRED"
+}

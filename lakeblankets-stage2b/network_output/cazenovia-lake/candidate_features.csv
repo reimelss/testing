@@ -1,0 +1,2 @@
+OBJECTID,GPO_NAME,GNIS_ID,AreaSqKm,Elevation,Permanent_Identifier,ReachCode,FType,FCode,FCode_Description,GPO_County,GPO_NAME_SOURCE,GPO_HUC
+122113,Cazenovia Lake,00946092,4.71690951,363.3,124502375,04140202001728,390,39009,Lake/Pond: Hydrographic Category = Perennial; Stage = Average Water Elevation,Madison,NHD,Oneida

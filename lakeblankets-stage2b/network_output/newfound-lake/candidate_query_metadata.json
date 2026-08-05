@@ -1,0 +1,24 @@
+{
+  "key": "newfound-lake",
+  "lake_id": "LB-NH-NEWFOUND-LAKE",
+  "lake_name": "Newfound Lake",
+  "endpoint": "https://nhgeodata.unh.edu/hosting/rest/services/Hosted/IWR_WaterResources/FeatureServer/9",
+  "where_clause": "UPPER(gnis_name) = 'NEWFOUND LAKE'",
+  "candidate_fields": [
+    "objectid",
+    "permanent_identifier",
+    "fdate",
+    "resolution",
+    "gnis_id",
+    "gnis_name",
+    "areasqkm",
+    "elevation",
+    "reachcode",
+    "ftype",
+    "fcode"
+  ],
+  "accessed_utc": "2026-08-05T23:06:45.724757+00:00",
+  "candidate_count": 1,
+  "response_sha256": "75c5dac6112f6b58b4b1c09e4f4392c7173ec89eeb60ce791cb1a7cab497d239",
+  "status": "CANDIDATE_REVIEW_REQUIRED"
+}

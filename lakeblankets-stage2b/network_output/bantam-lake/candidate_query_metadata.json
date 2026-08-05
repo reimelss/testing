@@ -1,0 +1,24 @@
+{
+  "key": "bantam-lake",
+  "lake_id": "LB-CT-BANTAM-LAKE",
+  "lake_name": "Bantam Lake",
+  "endpoint": "https://services1.arcgis.com/FjPcSmEFuDYlIdKC/ArcGIS/rest/services/Connecticut_Hydrography_Set/FeatureServer/1",
+  "where_clause": "UPPER(LAKE) = 'BANTAM LAKE' OR UPPER(NAMED_POLY) = 'BANTAM LAKE'",
+  "candidate_fields": [
+    "OBJECTID",
+    "HYPOLY_COD",
+    "HYDRO_POLY",
+    "AV_LEGEND",
+    "NAMEDP_COD",
+    "NAMED_POLY",
+    "LAKE_NO",
+    "LAKE",
+    "ACREAGE",
+    "Shape__Area",
+    "Shape__Length"
+  ],
+  "accessed_utc": "2026-08-05T23:06:54.599523+00:00",
+  "candidate_count": 2,
+  "response_sha256": "a63154a837a239309bab7afa952b5a372702a8ab506aaa51b9fa6ee987092360",
+  "status": "CANDIDATE_REVIEW_REQUIRED"
+}

@@ -1,0 +1,24 @@
+{
+  "key": "lake-waramaug",
+  "lake_id": "LB-CT-LAKE-WARAMAUG",
+  "lake_name": "Lake Waramaug",
+  "endpoint": "https://services1.arcgis.com/FjPcSmEFuDYlIdKC/ArcGIS/rest/services/Connecticut_Hydrography_Set/FeatureServer/1",
+  "where_clause": "UPPER(LAKE) LIKE '%WARAMAUG%' OR UPPER(NAMED_POLY) LIKE '%WARAMAUG%'",
+  "candidate_fields": [
+    "OBJECTID",
+    "HYPOLY_COD",
+    "HYDRO_POLY",
+    "AV_LEGEND",
+    "NAMEDP_COD",
+    "NAMED_POLY",
+    "LAKE_NO",
+    "LAKE",
+    "ACREAGE",
+    "Shape__Area",
+    "Shape__Length"
+  ],
+  "accessed_utc": "2026-08-05T23:06:46.238648+00:00",
+  "candidate_count": 1,
+  "response_sha256": "d090cc0914082389ce6178f0942bb21464d8d0133482bfafc7c7e4ac000a349c",
+  "status": "CANDIDATE_REVIEW_REQUIRED"
+}

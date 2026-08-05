@@ -1,0 +1,28 @@
+{
+  "key": "lake-mohawk",
+  "lake_id": "LB-NJ-LAKE-MOHAWK",
+  "lake_name": "Lake Mohawk",
+  "endpoint": "https://mapsdep.nj.gov/arcgis/rest/services/Features/Hydrography/MapServer/33",
+  "where_clause": "UPPER(GNIS_NAME) = 'LAKE MOHAWK' OR UPPER(WATERBODY_NAME) = 'LAKE MOHAWK' OR UPPER(FEATURE_NAME) = 'LAKE MOHAWK'",
+  "candidate_fields": [
+    "OBJECTID",
+    "COMID",
+    "PERMANENT_IDENTIFIER",
+    "GNIS_ID",
+    "GNIS_NAME",
+    "AREASQKM",
+    "REACHCODE",
+    "FTYPE_DISPLAY",
+    "HU8",
+    "WATERBODY_NAME",
+    "FEATURE_ID",
+    "FEATURE_NAME",
+    "FEATURE_CLASS",
+    "LEVELELEV",
+    "GLOBALID"
+  ],
+  "accessed_utc": "2026-08-05T23:06:42.003638+00:00",
+  "candidate_count": 3,
+  "response_sha256": "a7072c186673d522bbba8ad08ac9bb6371e9df945c06ba8d1d82d2c0687ea804",
+  "status": "CANDIDATE_REVIEW_REQUIRED"
+}

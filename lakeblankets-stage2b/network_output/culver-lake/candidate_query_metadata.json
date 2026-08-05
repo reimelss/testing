@@ -1,0 +1,28 @@
+{
+  "key": "culver-lake",
+  "lake_id": "LB-NJ-CULVER-LAKE",
+  "lake_name": "Culver Lake",
+  "endpoint": "https://mapsdep.nj.gov/arcgis/rest/services/Features/Hydrography/MapServer/33",
+  "where_clause": "UPPER(GNIS_NAME) LIKE '%CULVER%' OR UPPER(WATERBODY_NAME) LIKE '%CULVER%' OR UPPER(FEATURE_NAME) LIKE '%CULVER%'",
+  "candidate_fields": [
+    "OBJECTID",
+    "COMID",
+    "PERMANENT_IDENTIFIER",
+    "GNIS_ID",
+    "GNIS_NAME",
+    "AREASQKM",
+    "REACHCODE",
+    "FTYPE_DISPLAY",
+    "HU8",
+    "WATERBODY_NAME",
+    "FEATURE_ID",
+    "FEATURE_NAME",
+    "FEATURE_CLASS",
+    "LEVELELEV",
+    "GLOBALID"
+  ],
+  "accessed_utc": "2026-08-05T23:06:42.842910+00:00",
+  "candidate_count": 20,
+  "response_sha256": "46940a969b3e78a0729f42a6ea024e2ea15700f3b53d72ff8c094080808bb55f",
+  "status": "CANDIDATE_REVIEW_REQUIRED"
+}

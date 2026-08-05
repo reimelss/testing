@@ -1,0 +1,24 @@
+{
+  "key": "pleasant-lake-new-london",
+  "lake_id": "LB-NH-PLEASANT-LAKE",
+  "lake_name": "Pleasant Lake (New London)",
+  "endpoint": "https://nhgeodata.unh.edu/hosting/rest/services/Hosted/IWR_WaterResources/FeatureServer/9",
+  "where_clause": "UPPER(gnis_name) = 'PLEASANT LAKE'",
+  "candidate_fields": [
+    "objectid",
+    "permanent_identifier",
+    "fdate",
+    "resolution",
+    "gnis_id",
+    "gnis_name",
+    "areasqkm",
+    "elevation",
+    "reachcode",
+    "ftype",
+    "fcode"
+  ],
+  "accessed_utc": "2026-08-05T23:07:00.805406+00:00",
+  "candidate_count": 2,
+  "response_sha256": "2744d9da2846d7ac6a38592a763a222296dd2b90379b820765bcd13bb299b9f8",
+  "status": "CANDIDATE_REVIEW_REQUIRED"
+}

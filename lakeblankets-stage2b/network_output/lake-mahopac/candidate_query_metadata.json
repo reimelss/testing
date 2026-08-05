@@ -1,0 +1,26 @@
+{
+  "key": "lake-mahopac",
+  "lake_id": "LB-NY-LAKE-MAHOPAC",
+  "lake_name": "Lake Mahopac",
+  "endpoint": "https://gisservices.its.ny.gov/arcgis/rest/services/NYS_Hydrography/MapServer/9",
+  "where_clause": "UPPER(GPO_NAME) = 'LAKE MAHOPAC' OR UPPER(GPO_NAME) = 'MAHOPAC LAKE'",
+  "candidate_fields": [
+    "OBJECTID",
+    "GPO_NAME",
+    "GNIS_ID",
+    "AreaSqKm",
+    "Elevation",
+    "Permanent_Identifier",
+    "ReachCode",
+    "FType",
+    "FCode",
+    "FCode_Description",
+    "GPO_County",
+    "GPO_NAME_SOURCE",
+    "GPO_HUC"
+  ],
+  "accessed_utc": "2026-08-05T23:06:58.232401+00:00",
+  "candidate_count": 1,
+  "response_sha256": "675ccef5bbfa52f94a86e84ac619b7394bb861de4100b3c53de8d80f71ab5574",
+  "status": "CANDIDATE_REVIEW_REQUIRED"
+}

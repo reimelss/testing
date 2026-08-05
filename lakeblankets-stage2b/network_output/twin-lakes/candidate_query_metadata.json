@@ -1,0 +1,24 @@
+{
+  "key": "twin-lakes",
+  "lake_id": "LB-CT-TWIN-LAKES",
+  "lake_name": "Twin Lakes (Washinee / Washining)",
+  "endpoint": "https://services1.arcgis.com/FjPcSmEFuDYlIdKC/ArcGIS/rest/services/Connecticut_Hydrography_Set/FeatureServer/1",
+  "where_clause": "UPPER(LAKE) LIKE '%TWIN%' OR UPPER(NAMED_POLY) LIKE '%WASHIN%'",
+  "candidate_fields": [
+    "OBJECTID",
+    "HYPOLY_COD",
+    "HYDRO_POLY",
+    "AV_LEGEND",
+    "NAMEDP_COD",
+    "NAMED_POLY",
+    "LAKE_NO",
+    "LAKE",
+    "ACREAGE",
+    "Shape__Area",
+    "Shape__Length"
+  ],
+  "accessed_utc": "2026-08-05T23:06:55.002985+00:00",
+  "candidate_count": 5,
+  "response_sha256": "0483e3d54054af89631cec29c247eb49e45ed1a1b5161926869555f1b319c90f",
+  "status": "CANDIDATE_REVIEW_REQUIRED"
+}

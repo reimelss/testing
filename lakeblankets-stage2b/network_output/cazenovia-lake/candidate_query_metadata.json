@@ -1,0 +1,26 @@
+{
+  "key": "cazenovia-lake",
+  "lake_id": "LB-NY-CAZENOVIA-LAKE",
+  "lake_name": "Cazenovia Lake",
+  "endpoint": "https://gisservices.its.ny.gov/arcgis/rest/services/NYS_Hydrography/MapServer/9",
+  "where_clause": "UPPER(GPO_NAME) = 'CAZENOVIA LAKE'",
+  "candidate_fields": [
+    "OBJECTID",
+    "GPO_NAME",
+    "GNIS_ID",
+    "AreaSqKm",
+    "Elevation",
+    "Permanent_Identifier",
+    "ReachCode",
+    "FType",
+    "FCode",
+    "FCode_Description",
+    "GPO_County",
+    "GPO_NAME_SOURCE",
+    "GPO_HUC"
+  ],
+  "accessed_utc": "2026-08-05T23:06:59.188627+00:00",
+  "candidate_count": 1,
+  "response_sha256": "c72cbd475f6614ba69974967401576d728d9f95e94281525d34804bba051cf73",
+  "status": "CANDIDATE_REVIEW_REQUIRED"
+}

@@ -1,0 +1,26 @@
+{
+  "key": "lake-placid",
+  "lake_id": "LB-NY-LAKE-PLACID",
+  "lake_name": "Lake Placid",
+  "endpoint": "https://gisservices.its.ny.gov/arcgis/rest/services/NYS_Hydrography/MapServer/9",
+  "where_clause": "UPPER(GPO_NAME) = 'LAKE PLACID'",
+  "candidate_fields": [
+    "OBJECTID",
+    "GPO_NAME",
+    "GNIS_ID",
+    "AreaSqKm",
+    "Elevation",
+    "Permanent_Identifier",
+    "ReachCode",
+    "FType",
+    "FCode",
+    "FCode_Description",
+    "GPO_County",
+    "GPO_NAME_SOURCE",
+    "GPO_HUC"
+  ],
+  "accessed_utc": "2026-08-05T23:06:41.165288+00:00",
+  "candidate_count": 2,
+  "response_sha256": "828eb33518e805aca3c87850beee6ba35f0df3a40988969c8f663508670bb877",
+  "status": "CANDIDATE_REVIEW_REQUIRED"
+}

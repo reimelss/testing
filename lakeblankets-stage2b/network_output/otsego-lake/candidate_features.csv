@@ -1,0 +1,2 @@
+OBJECTID,GPO_NAME,GNIS_ID,AreaSqKm,Elevation,Permanent_Identifier,ReachCode,FType,FCode,FCode_Description,GPO_County,GPO_NAME_SOURCE,GPO_HUC
+97444,Otsego Lake,00959551,16.88018143,365.8,43492729,02050101002203,390,39009,Lake/Pond: Hydrographic Category = Perennial; Stage = Average Water Elevation,Otsego,NHD,Upper Susquehanna

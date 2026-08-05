@@ -1,0 +1,3 @@
+OBJECTID,GPO_NAME,GNIS_ID,AreaSqKm,Elevation,Permanent_Identifier,ReachCode,FType,FCode,FCode_Description,GPO_County,GPO_NAME_SOURCE,GPO_HUC
+88510,Lake Placid,00960658,7.97375317,566,115353775,04300104001150,390,39009,Lake/Pond: Hydrographic Category = Perennial; Stage = Average Water Elevation,Essex,NHD,Ausable River
+135249,Lake Placid,,0.08814914,,115353803,04300104000993,390,39004,Lake/Pond: Hydrographic Category = Perennial,Essex,AreaHydro,Ausable River

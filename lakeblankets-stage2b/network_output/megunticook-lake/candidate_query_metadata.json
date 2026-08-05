@@ -1,0 +1,25 @@
+{
+  "key": "megunticook-lake",
+  "lake_id": "LB-ME-MEGUNTICOOK-LAKE",
+  "lake_name": "Megunticook Lake",
+  "endpoint": "https://gis.maine.gov/arcgis/rest/services/Hosted/PublicMasterWaters/FeatureServer/1",
+  "where_clause": "UPPER(name) = 'MEGUNTICOOK LAKE' AND wtype = 'Lentic'",
+  "candidate_fields": [
+    "fid",
+    "name",
+    "wtype",
+    "reachcode",
+    "wbid",
+    "mgtwbid",
+    "mgtwat1",
+    "altname",
+    "lat",
+    "long",
+    "acres",
+    "reg"
+  ],
+  "accessed_utc": "2026-08-05T23:06:56.923166+00:00",
+  "candidate_count": 1,
+  "response_sha256": "1f5e2e404317632a0aefe757c8d736c4595437482741c0092d4050c7edd05537",
+  "status": "CANDIDATE_REVIEW_REQUIRED"
+}

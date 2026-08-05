@@ -1,0 +1,28 @@
+{
+  "key": "green-pond",
+  "lake_id": "LB-NJ-GREEN-POND",
+  "lake_name": "Green Pond",
+  "endpoint": "https://mapsdep.nj.gov/arcgis/rest/services/Features/Hydrography/MapServer/33",
+  "where_clause": "UPPER(GNIS_NAME) = 'GREEN POND' OR UPPER(WATERBODY_NAME) = 'GREEN POND' OR UPPER(FEATURE_NAME) = 'GREEN POND'",
+  "candidate_fields": [
+    "OBJECTID",
+    "COMID",
+    "PERMANENT_IDENTIFIER",
+    "GNIS_ID",
+    "GNIS_NAME",
+    "AREASQKM",
+    "REACHCODE",
+    "FTYPE_DISPLAY",
+    "HU8",
+    "WATERBODY_NAME",
+    "FEATURE_ID",
+    "FEATURE_NAME",
+    "FEATURE_CLASS",
+    "LEVELELEV",
+    "GLOBALID"
+  ],
+  "accessed_utc": "2026-08-05T23:07:00.038611+00:00",
+  "candidate_count": 1,
+  "response_sha256": "bc9bbfc1ef86e0712a35cef3bbbd7ceb451ba32e7d78c7ef0099697eb366b255",
+  "status": "CANDIDATE_REVIEW_REQUIRED"
+}

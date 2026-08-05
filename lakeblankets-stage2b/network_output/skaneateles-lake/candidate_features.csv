@@ -1,0 +1,2 @@
+OBJECTID,GPO_NAME,GNIS_ID,AreaSqKm,Elevation,Permanent_Identifier,ReachCode,FType,FCode,FCode_Description,GPO_County,GPO_NAME_SOURCE,GPO_HUC
+92998,Skaneateles Lake,00970614,35.518,263,87961508,04140201003720,390,39009,Lake/Pond: Hydrographic Category = Perennial; Stage = Average Water Elevation,Onondaga,NHD,Seneca

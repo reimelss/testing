@@ -1,0 +1,24 @@
+{
+  "key": "lake-sunapee",
+  "lake_id": "LB-NH-LAKE-SUNAPEE",
+  "lake_name": "Lake Sunapee",
+  "endpoint": "https://nhgeodata.unh.edu/hosting/rest/services/Hosted/IWR_WaterResources/FeatureServer/9",
+  "where_clause": "UPPER(gnis_name) = 'LAKE SUNAPEE' OR UPPER(gnis_name) = 'SUNAPEE LAKE'",
+  "candidate_fields": [
+    "objectid",
+    "permanent_identifier",
+    "fdate",
+    "resolution",
+    "gnis_id",
+    "gnis_name",
+    "areasqkm",
+    "elevation",
+    "reachcode",
+    "ftype",
+    "fcode"
+  ],
+  "accessed_utc": "2026-08-05T23:06:44.263939+00:00",
+  "candidate_count": 1,
+  "response_sha256": "0541e237bff74f498be48ca727626309d19ada8ab1afdfb402ba9034c0c18209",
+  "status": "CANDIDATE_REVIEW_REQUIRED"
+}

@@ -1,0 +1,26 @@
+{
+  "key": "otsego-lake",
+  "lake_id": "LB-NY-OTSEGO-LAKE",
+  "lake_name": "Otsego Lake",
+  "endpoint": "https://gisservices.its.ny.gov/arcgis/rest/services/NYS_Hydrography/MapServer/9",
+  "where_clause": "UPPER(GPO_NAME) = 'OTSEGO LAKE'",
+  "candidate_fields": [
+    "OBJECTID",
+    "GPO_NAME",
+    "GNIS_ID",
+    "AreaSqKm",
+    "Elevation",
+    "Permanent_Identifier",
+    "ReachCode",
+    "FType",
+    "FCode",
+    "FCode_Description",
+    "GPO_County",
+    "GPO_NAME_SOURCE",
+    "GPO_HUC"
+  ],
+  "accessed_utc": "2026-08-05T23:06:47.422403+00:00",
+  "candidate_count": 1,
+  "response_sha256": "15287995fa5b075f14dacbb2cff1796e488ed6b4f74a9b499a4819c7fad186f1",
+  "status": "CANDIDATE_REVIEW_REQUIRED"
+}
