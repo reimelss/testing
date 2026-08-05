@@ -1,0 +1,71 @@
+name: Lake Blankets Stockbridge Bowl Final Extract
+
+on:
+  push:
+    branches:
+      - lakeblankets-stage2b-worker
+    paths:
+      - .github/workflows/lakeblankets-stockbridge-final.yml
+
+permissions:
+  contents: read
+
+jobs:
+  fetch-stockbridge:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Fetch official MassGIS shoreline response
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p stockbridge-bowl-lake-mahkeenac
+          python - <<'PY'
+          from urllib.parse import urlencode
+          from urllib.request import Request, urlopen
+          from pathlib import Path
+          import hashlib, json
+          from datetime import datetime, timezone
+
+          endpoint = "https://arcgisserver.digital.mass.gov/arcgisserver/rest/services/AGOL/MassDEP_Hydrography/FeatureServer/16/query"
+          params = {
+              "where": "UPPER(NAME) LIKE '%STOCKBRIDGE%' OR UPPER(NAME) LIKE '%MAHKEENAC%'",
+              "outFields": "*",
+              "returnGeometry": "true",
+              "outSR": "4326",
+              "geometryPrecision": "9",
+              "f": "geojson",
+          }
+          url = endpoint + "?" + urlencode(params)
+          req = Request(url, headers={"User-Agent":"LakeBlankets-Stage2B/1.2 (+official MassGIS acquisition)"})
+          with urlopen(req, timeout=180) as response:
+              raw = response.read()
+          data = json.loads(raw)
+          if data.get("error"):
+              raise RuntimeError(data["error"])
+          features = data.get("features", [])
+          if not features:
+              raise RuntimeError("No Stockbridge Bowl / Lake Mahkeenac feature returned")
+          out = Path("stockbridge-bowl-lake-mahkeenac")
+          (out / "candidate_features.geojson").write_bytes(raw)
+          meta = {
+              "lake_id":"LB-MA-STOCKBRIDGE-BOWL-LAKE-MAHKEENAC",
+              "lake_name":"Stockbridge Bowl / Lake Mahkeenac",
+              "endpoint":endpoint.rsplit('/query',1)[0],
+              "where_clause":params["where"],
+              "accessed_utc":datetime.now(timezone.utc).isoformat(),
+              "candidate_count":len(features),
+              "response_sha256":hashlib.sha256(raw).hexdigest(),
+              "status":"CANDIDATE_REVIEW_REQUIRED",
+          }
+          (out / "candidate_query_metadata.json").write_text(json.dumps(meta, indent=2), encoding="utf-8")
+          print(json.dumps(meta, indent=2))
+          PY
+
+      - name: Upload official response
+        uses: actions/upload-artifact@v4
+        with:
+          name: lakeblankets-stockbridge-bowl-final
+          path: stockbridge-bowl-lake-mahkeenac
+          if-no-files-found: error
+          retention-days: 7
