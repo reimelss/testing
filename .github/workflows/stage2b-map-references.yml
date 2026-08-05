@@ -1,0 +1,90 @@
+name: Lake Blankets Stage 2B Official Map References
+
+on:
+  push:
+    paths:
+      - 'stage2b/map_reference_config.json'
+      - 'stage2b/MAP_TRIGGER.txt'
+      - '.github/workflows/stage2b-map-references.yml'
+  workflow_dispatch:
+
+jobs:
+  map-references:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install requests
+        run: pip install requests
+      - name: Download fixed USGS aerial and topographic exports
+        shell: bash
+        run: |
+          python - <<'PY'
+          import hashlib, json, time
+          from datetime import datetime, timezone
+          from pathlib import Path
+          import requests
+          from requests.adapters import HTTPAdapter
+          from urllib3.util.retry import Retry
+
+          services = {
+              'official_aerial_reference': 'https://basemap.nationalmap.gov/arcgis/rest/services/USGSImageryOnly/MapServer/export',
+              'official_topographic_reference': 'https://basemap.nationalmap.gov/arcgis/rest/services/USGSTopo/MapServer/export',
+          }
+          config = json.loads(Path('stage2b/map_reference_config.json').read_text())
+          output = Path('map-reference-output')
+          retry = Retry(total=6, connect=6, read=6, status=6, backoff_factor=1.0, status_forcelist=(429,500,502,503,504))
+          session = requests.Session()
+          session.mount('https://', HTTPAdapter(max_retries=retry))
+          session.headers['User-Agent'] = 'LakeBlankets-Stage2B-MapQA/1.0'
+
+          def square(bounds, padding=0.12):
+              minx,miny,maxx,maxy = map(float,bounds)
+              width=max(maxx-minx,1e-6); height=max(maxy-miny,1e-6)
+              size=max(width,height)*(1+2*padding)
+              cx=(minx+maxx)/2; cy=(miny+maxy)/2
+              return [cx-size/2,cy-size/2,cx+size/2,cy+size/2]
+
+          results=[]
+          for index,lake in enumerate(config['lakes'],1):
+              print(f"[{index}/{len(config['lakes'])}] {lake['lake_name']}", flush=True)
+              qa = output/'Lake_Packages'/lake['package_root']/'04_geometry_qa'
+              qa.mkdir(parents=True,exist_ok=True)
+              bbox=square(lake['bbox_wgs84'])
+              record={'lake_id':lake['lake_id'],'lake_name':lake['lake_name'],'status':'COMPLETE','references':{}}
+              for name,url in services.items():
+                  params={'bbox':','.join(map(str,bbox)),'bboxSR':'4326','imageSR':'4326','size':'1800,1800','format':'png32','transparent':'false','f':'image'}
+                  try:
+                      response=session.get(url,params=params,timeout=180)
+                      response.raise_for_status()
+                      if 'json' in response.headers.get('content-type','').lower():
+                          raise RuntimeError(response.text[:500])
+                      image_path=qa/f'{name}.png'
+                      image_path.write_bytes(response.content)
+                      metadata={'service_url':url,'request_url':response.url,'bbox_wgs84':bbox,'image_width':1800,'image_height':1800,'sha256':hashlib.sha256(response.content).hexdigest(),'acquired_at':datetime.now(timezone.utc).replace(microsecond=0).isoformat(),'rights_use':'Internal factual geometry QA only; retain service attribution and terms; not approved as product artwork.'}
+                      (qa/f'{name}_metadata.json').write_text(json.dumps(metadata,indent=2))
+                      record['references'][name]=metadata
+                  except Exception as exc:
+                      error={'service_url':url,'error':repr(exc)}
+                      (qa/f'{name}_error.json').write_text(json.dumps(error,indent=2))
+                      record['references'][name]=error
+                      record['status']='PARTIAL'
+              results.append(record)
+              time.sleep(0.15)
+          output.mkdir(parents=True,exist_ok=True)
+          (output/'map_reference_download_report.json').write_text(json.dumps({'results':results},indent=2))
+          partial=sum(1 for item in results if item['status']!='COMPLETE')
+          print(f'Completed {len(results)} lakes; partial={partial}')
+          raise SystemExit(1 if partial else 0)
+          PY
+      - name: Upload official map references
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: lake-blankets-stage2b-map-references
+          path: map-reference-output/
+          if-no-files-found: error
+          retention-days: 14
