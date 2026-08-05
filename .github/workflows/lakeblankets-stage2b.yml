@@ -1,4 +1,5 @@
 # Regenerate expanded candidate set for Stage 2B review.
+# Triggered for final v1.2 local package reconstruction on 2026-08-05.
 name: Lake Blankets Stage 2B Candidate Acquisition
 
 on:
