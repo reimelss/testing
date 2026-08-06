@@ -1,0 +1,58 @@
+name: Lake Hopatcong Official Management Plan
+
+on:
+  push:
+    branches:
+      - lakeblankets-stage2b-worker
+    paths:
+      - .github/workflows/lake-hopatcong-official-pdf.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  acquire:
+    runs-on: macos-latest
+    timeout-minutes: 15
+    steps:
+      - name: Download official management plan and render bathymetry reference
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p lake-hopatcong-official-plan
+          curl --fail --location --retry 6 --retry-all-errors \
+            --user-agent 'LakeBlankets-Stage2B/1.0' \
+            'https://www.nj.gov/dep/fgw/pdf/fwfisheries/lakeplan_hopatcong.pdf' \
+            --output lake-hopatcong-official-plan/lake_hopatcong_fisheries_management_plan_2015.pdf
+          brew install poppler
+          pdftoppm -f 24 -singlefile -png -r 180 \
+            lake-hopatcong-official-plan/lake_hopatcong_fisheries_management_plan_2015.pdf \
+            lake-hopatcong-official-plan/official_bathymetry_reference_page_24
+          shasum -a 256 lake-hopatcong-official-plan/* > lake-hopatcong-official-plan/SHA256SUMS.txt
+          python3 - <<'PY'
+          import json, hashlib
+          from datetime import datetime, timezone
+          from pathlib import Path
+          p=Path('lake-hopatcong-official-plan/lake_hopatcong_fisheries_management_plan_2015.pdf')
+          meta={
+            'lake_id':'LB-NJ-LAKE-HOPATCONG',
+            'title':'Lake Hopatcong Fisheries Management Plan',
+            'publisher':'New Jersey Division of Fish and Wildlife',
+            'publication_date':'2015-01',
+            'source_url':'https://www.nj.gov/dep/fgw/pdf/fwfisheries/lakeplan_hopatcong.pdf',
+            'accessed_utc':datetime.now(timezone.utc).replace(microsecond=0).isoformat(),
+            'pdf_sha256':hashlib.sha256(p.read_bytes()).hexdigest(),
+            'bathymetry_reference_page':24,
+            'rights_use':'Facts and internal design/geometry QA reference. Do not reproduce the embedded map as merchandise artwork without separate rights review.',
+            'status':'OFFICIAL_REFERENCE_ACQUIRED'
+          }
+          Path('lake-hopatcong-official-plan/management_plan_metadata.json').write_text(json.dumps(meta,indent=2))
+          PY
+      - name: Upload official plan reference
+        uses: actions/upload-artifact@v4
+        with:
+          name: lake-hopatcong-official-management-plan
+          path: lake-hopatcong-official-plan/
+          if-no-files-found: error
+          retention-days: 7
