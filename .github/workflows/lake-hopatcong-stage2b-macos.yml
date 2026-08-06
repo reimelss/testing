@@ -1,0 +1,84 @@
+name: Lake Hopatcong Stage 2B Acquisition macOS
+
+on:
+  push:
+    branches:
+      - lakeblankets-stage2b-worker
+    paths:
+      - .github/workflows/lake-hopatcong-stage2b-macos.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  acquire:
+    runs-on: macos-latest
+    timeout-minutes: 20
+    steps:
+      - name: Acquire official NJDEP source records
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p lake-hopatcong-stage2b-source-acquisition
+          python3 - <<'PY'
+          import hashlib, json, math, time
+          from datetime import datetime, timezone
+          from pathlib import Path
+          from urllib.parse import urlencode
+          from urllib.request import Request, urlopen
+          OUT=Path('lake-hopatcong-stage2b-source-acquisition')
+          UA='LakeBlankets-Stage2B/1.0 Lake Hopatcong'
+          def get(url,params,attempts=8):
+              full=url+'?'+urlencode(params)
+              err=None
+              for n in range(attempts):
+                  try:
+                      with urlopen(Request(full,headers={'User-Agent':UA}),timeout=180) as r:return r.read(),full
+                  except Exception as exc:
+                      err=exc; time.sleep(min(2**n,20))
+              raise RuntimeError(f'{full}: {err!r}')
+          def xy(obj):
+              if isinstance(obj,list):
+                  if len(obj)>=2 and isinstance(obj[0],(int,float)) and isinstance(obj[1],(int,float)):yield float(obj[0]),float(obj[1])
+                  else:
+                      for x in obj:yield from xy(x)
+          hydro='https://mapsdep.nj.gov/arcgis/rest/services/Features/Hydrography/MapServer/33/query'
+          where="UPPER(GNIS_NAME) = 'LAKE HOPATCONG' OR UPPER(WATERBODY_NAME) = 'LAKE HOPATCONG' OR UPPER(FEATURE_NAME) = 'LAKE HOPATCONG'"
+          raw,url=get(hydro,{'where':where,'outFields':'*','returnGeometry':'true','outSR':'4326','geometryPrecision':'9','f':'geojson'})
+          data=json.loads(raw)
+          if data.get('error') or not data.get('features'):raise RuntimeError(data.get('error') or 'no hydro features')
+          (OUT/'candidate_features.geojson').write_bytes(raw)
+          (OUT/'candidate_attributes.json').write_text(json.dumps([f.get('properties') or {} for f in data['features']],indent=2,default=str))
+          pts=[p for f in data['features'] for p in xy((f.get('geometry') or {}).get('coordinates'))]
+          bbox=[min(p[0] for p in pts),min(p[1] for p in pts),max(p[0] for p in pts),max(p[1] for p in pts)]
+          meta={'lake_id':'LB-NJ-LAKE-HOPATCONG','lake_name':'Lake Hopatcong','agency':'New Jersey Department of Environmental Protection, Bureau of GIS','dataset':'Waterbody 2015 (NHD)','source_endpoint':hydro.rsplit('/query',1)[0],'source_query':where,'request_url':url,'accessed_utc':datetime.now(timezone.utc).replace(microsecond=0).isoformat(),'candidate_count':len(data['features']),'candidate_feature_ids':[f"OBJECTID:{(f.get('properties') or {}).get('OBJECTID')}" for f in data['features']],'bbox_wgs84':bbox,'response_sha256':hashlib.sha256(raw).hexdigest(),'rights_use':'NJDEP government GIS source; retain attribution; human approval required before geometry version 1.0.0.'}
+          (OUT/'candidate_query_metadata.json').write_text(json.dumps(meta,indent=2))
+          padx=max((bbox[2]-bbox[0])*.03,.001);pady=max((bbox[3]-bbox[1])*.03,.001)
+          bb=[bbox[0]-padx,bbox[1]-pady,bbox[2]+padx,bbox[3]+pady]
+          bathy='https://mapsdep.nj.gov/arcgis/rest/services/Features/Elevation/MapServer/117/query'
+          braw,burl=get(bathy,{'where':'1=1','geometry':','.join(map(str,bb)),'geometryType':'esriGeometryEnvelope','inSR':'4326','spatialRel':'esriSpatialRelIntersects','outFields':'*','returnGeometry':'true','outSR':'4326','geometryPrecision':'9','f':'geojson'})
+          bd=json.loads(braw)
+          if bd.get('error'):raise RuntimeError(bd['error'])
+          (OUT/'bathymetric_contours.geojson').write_bytes(braw)
+          bm={'lake_id':'LB-NJ-LAKE-HOPATCONG','agency':'New Jersey Department of Environmental Protection','dataset':'Bathymetric Contours, Features/Elevation MapServer layer 117','source_endpoint':bathy.rsplit('/query',1)[0],'request_url':burl,'accessed_utc':datetime.now(timezone.utc).replace(microsecond=0).isoformat(),'query_bbox_wgs84':bb,'feature_count':len(bd.get('features',[])),'elevation_values':sorted({(f.get('properties') or {}).get('ELEVATION') for f in bd.get('features',[]) if (f.get('properties') or {}).get('ELEVATION') is not None}),'response_sha256':hashlib.sha256(braw).hexdigest(),'rights_use':'NJDEP government GIS source; verify units, labels and alignment before public artwork.'}
+          (OUT/'bathymetric_contours_metadata.json').write_text(json.dumps(bm,indent=2))
+          # USGS QA map exports
+          w=bbox[2]-bbox[0];h=bbox[3]-bbox[1];side=max(w,h)*1.20;cx=(bbox[0]+bbox[2])/2;cy=(bbox[1]+bbox[3])/2;sq=[cx-side/2,cy-side/2,cx+side/2,cy+side/2]
+          refs={}
+          for key,endpoint in {'official_aerial_reference':'https://basemap.nationalmap.gov/arcgis/rest/services/USGSImageryOnly/MapServer/export','official_topographic_reference':'https://basemap.nationalmap.gov/arcgis/rest/services/USGSTopo/MapServer/export'}.items():
+              img,iurl=get(endpoint,{'bbox':','.join(map(str,sq)),'bboxSR':'4326','imageSR':'4326','size':'1800,1800','format':'png32','transparent':'false','f':'image'})
+              (OUT/f'{key}.png').write_bytes(img)
+              refs[key]={'service_url':endpoint,'request_url':iurl,'bbox_wgs84':sq,'sha256':hashlib.sha256(img).hexdigest(),'acquired_at':datetime.now(timezone.utc).replace(microsecond=0).isoformat(),'rights_use':'Internal factual geometry QA only; not product artwork.'}
+              (OUT/f'{key}_metadata.json').write_text(json.dumps(refs[key],indent=2))
+          report={'status':'SUCCESS','lake_id':'LB-NJ-LAKE-HOPATCONG','candidate_count':len(data['features']),'bathymetric_contour_count':len(bd.get('features',[])),'bbox_wgs84':bbox,'references':refs}
+          (OUT/'acquisition_report.json').write_text(json.dumps(report,indent=2))
+          print(json.dumps(report,indent=2))
+          PY
+      - name: Upload source acquisition
+        uses: actions/upload-artifact@v4
+        with:
+          name: lake-hopatcong-stage2b-source-acquisition-macos
+          path: lake-hopatcong-stage2b-source-acquisition/
+          if-no-files-found: error
+          retention-days: 7
