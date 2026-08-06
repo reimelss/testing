@@ -1,0 +1,193 @@
+name: Lake Hopatcong Stage 2B Acquisition
+
+on:
+  push:
+    branches:
+      - lakeblankets-stage2b-worker
+    paths:
+      - .github/workflows/lake-hopatcong-stage2b-acquisition.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  acquire:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Acquire official geometry, bathymetry and map references
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from __future__ import annotations
+          import hashlib, json, math, time
+          from datetime import datetime, timezone
+          from pathlib import Path
+          from urllib.parse import urlencode
+          from urllib.request import Request, urlopen
+
+          OUT = Path('lake-hopatcong-stage2b-source-acquisition')
+          OUT.mkdir(parents=True, exist_ok=True)
+          UA = 'LakeBlankets-Stage2B/1.0 (+Lake Hopatcong official-source acquisition)'
+
+          def fetch(url, params=None, attempts=7, timeout=180):
+              full = url if not params else url + ('&' if '?' in url else '?') + urlencode(params)
+              last = None
+              for i in range(attempts):
+                  try:
+                      req = Request(full, headers={'User-Agent': UA})
+                      with urlopen(req, timeout=timeout) as response:
+                          return response.read(), response.headers.get('content-type', ''), full
+                  except Exception as exc:
+                      last = exc
+                      time.sleep(min(2 ** i, 20))
+              raise RuntimeError(f'Fetch failed after {attempts} attempts: {full}: {last!r}')
+
+          def coords_iter(obj):
+              if isinstance(obj, (list, tuple)):
+                  if len(obj) >= 2 and isinstance(obj[0], (int, float)) and isinstance(obj[1], (int, float)):
+                      yield float(obj[0]), float(obj[1])
+                  else:
+                      for item in obj:
+                          yield from coords_iter(item)
+
+          hydro_url = 'https://mapsdep.nj.gov/arcgis/rest/services/Features/Hydrography/MapServer/33/query'
+          hydro_where = "UPPER(GNIS_NAME) = 'LAKE HOPATCONG' OR UPPER(WATERBODY_NAME) = 'LAKE HOPATCONG' OR UPPER(FEATURE_NAME) = 'LAKE HOPATCONG'"
+          hydro_params = {
+              'where': hydro_where,
+              'outFields': '*',
+              'returnGeometry': 'true',
+              'outSR': '4326',
+              'geometryPrecision': '9',
+              'f': 'geojson',
+          }
+          raw, ctype, request_url = fetch(hydro_url, hydro_params)
+          hydro = json.loads(raw)
+          if hydro.get('error'):
+              raise RuntimeError(hydro['error'])
+          features = hydro.get('features', [])
+          if not features:
+              raise RuntimeError('Official NJDEP query returned no Lake Hopatcong features')
+          (OUT / 'candidate_features.geojson').write_bytes(raw)
+          props = [f.get('properties') or {} for f in features]
+          (OUT / 'candidate_attributes.json').write_text(json.dumps(props, indent=2, default=str), encoding='utf-8')
+
+          points = []
+          for feature in features:
+              points.extend(coords_iter((feature.get('geometry') or {}).get('coordinates')))
+          minx = min(x for x, y in points); maxx = max(x for x, y in points)
+          miny = min(y for x, y in points); maxy = max(y for x, y in points)
+          bbox = [minx, miny, maxx, maxy]
+          selected_ids = [f"OBJECTID:{p.get('OBJECTID')}" for p in props]
+
+          hydro_meta = {
+              'lake_id': 'LB-NJ-LAKE-HOPATCONG',
+              'lake_name': 'Lake Hopatcong',
+              'agency': 'New Jersey Department of Environmental Protection, Bureau of GIS',
+              'dataset': 'Waterbody 2015 (NHD)',
+              'source_endpoint': hydro_url.rsplit('/query',1)[0],
+              'source_query': hydro_where,
+              'request_url': request_url,
+              'accessed_utc': datetime.now(timezone.utc).replace(microsecond=0).isoformat(),
+              'candidate_count': len(features),
+              'candidate_feature_ids': selected_ids,
+              'bbox_wgs84': bbox,
+              'response_sha256': hashlib.sha256(raw).hexdigest(),
+              'rights_use': 'NJDEP government GIS source. Retain attribution. Geometry requires human approval before production version 1.0.0.',
+          }
+          (OUT / 'candidate_query_metadata.json').write_text(json.dumps(hydro_meta, indent=2), encoding='utf-8')
+
+          # Official NJDEP bathymetric contour features intersecting the Lake Hopatcong envelope.
+          pad_x = max((maxx-minx)*0.02, 0.001)
+          pad_y = max((maxy-miny)*0.02, 0.001)
+          bathy_bbox = [minx-pad_x, miny-pad_y, maxx+pad_x, maxy+pad_y]
+          bathy_url = 'https://mapsdep.nj.gov/arcgis/rest/services/Features/Elevation/MapServer/117/query'
+          bathy_params = {
+              'where': '1=1',
+              'geometry': ','.join(str(v) for v in bathy_bbox),
+              'geometryType': 'esriGeometryEnvelope',
+              'inSR': '4326',
+              'spatialRel': 'esriSpatialRelIntersects',
+              'outFields': '*',
+              'returnGeometry': 'true',
+              'outSR': '4326',
+              'geometryPrecision': '9',
+              'f': 'geojson',
+          }
+          bathy_raw, bathy_ctype, bathy_request = fetch(bathy_url, bathy_params)
+          bathy = json.loads(bathy_raw)
+          if bathy.get('error'):
+              raise RuntimeError(bathy['error'])
+          (OUT / 'bathymetric_contours.geojson').write_bytes(bathy_raw)
+          elevations = sorted({(f.get('properties') or {}).get('ELEVATION') for f in bathy.get('features', []) if (f.get('properties') or {}).get('ELEVATION') is not None})
+          bathy_meta = {
+              'lake_id': 'LB-NJ-LAKE-HOPATCONG',
+              'agency': 'New Jersey Department of Environmental Protection',
+              'dataset': 'Bathymetric Contours, Features/Elevation MapServer layer 117',
+              'source_endpoint': bathy_url.rsplit('/query',1)[0],
+              'request_url': bathy_request,
+              'accessed_utc': datetime.now(timezone.utc).replace(microsecond=0).isoformat(),
+              'query_bbox_wgs84': bathy_bbox,
+              'feature_count': len(bathy.get('features', [])),
+              'elevation_values': elevations,
+              'response_sha256': hashlib.sha256(bathy_raw).hexdigest(),
+              'rights_use': 'NJDEP government GIS source. Verify contour units and alignment before publishing depth labels.',
+          }
+          (OUT / 'bathymetric_contours_metadata.json').write_text(json.dumps(bathy_meta, indent=2), encoding='utf-8')
+
+          # Official USGS base-map exports used only for geometry QA.
+          width = maxx-minx; height = maxy-miny
+          side = max(width, height) * 1.20
+          cx=(minx+maxx)/2; cy=(miny+maxy)/2
+          square=[cx-side/2,cy-side/2,cx+side/2,cy+side/2]
+          services = {
+              'official_aerial_reference': 'https://basemap.nationalmap.gov/arcgis/rest/services/USGSImageryOnly/MapServer/export',
+              'official_topographic_reference': 'https://basemap.nationalmap.gov/arcgis/rest/services/USGSTopo/MapServer/export',
+          }
+          references = {}
+          for key, url in services.items():
+              image_params = {
+                  'bbox': ','.join(str(v) for v in square),
+                  'bboxSR': '4326',
+                  'imageSR': '4326',
+                  'size': '1800,1800',
+                  'format': 'png32',
+                  'transparent': 'false',
+                  'f': 'image',
+              }
+              image, image_ctype, image_url = fetch(url, image_params)
+              (OUT / f'{key}.png').write_bytes(image)
+              references[key] = {
+                  'service_url': url,
+                  'request_url': image_url,
+                  'bbox_wgs84': square,
+                  'image_width': 1800,
+                  'image_height': 1800,
+                  'sha256': hashlib.sha256(image).hexdigest(),
+                  'acquired_at': datetime.now(timezone.utc).replace(microsecond=0).isoformat(),
+                  'rights_use': 'Internal factual geometry QA reference; not approved as product artwork.',
+              }
+              (OUT / f'{key}_metadata.json').write_text(json.dumps(references[key], indent=2), encoding='utf-8')
+
+          report = {
+              'status': 'SUCCESS',
+              'lake_id': 'LB-NJ-LAKE-HOPATCONG',
+              'candidate_count': len(features),
+              'bathymetric_contour_count': len(bathy.get('features', [])),
+              'bbox_wgs84': bbox,
+              'selected_feature_ids_pending_review': selected_ids,
+              'references': references,
+          }
+          (OUT / 'acquisition_report.json').write_text(json.dumps(report, indent=2), encoding='utf-8')
+          print(json.dumps(report, indent=2))
+          PY
+
+      - name: Upload source acquisition
+        uses: actions/upload-artifact@v4
+        with:
+          name: lake-hopatcong-stage2b-source-acquisition
+          path: lake-hopatcong-stage2b-source-acquisition/
+          if-no-files-found: error
+          retention-days: 7
