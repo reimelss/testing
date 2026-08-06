@@ -1,0 +1,224 @@
+name: Lake Blankets Geometry Recovery
+
+on:
+  push:
+    branches:
+      - lakeblankets-stage2b-worker
+    paths:
+      - .github/workflows/lakeblankets-geometry-recovery.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  recover:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Discover official sources and fetch final geometries
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p recovery-output
+          python - <<'PY'
+          from __future__ import annotations
+          import html, json, re, time
+          from pathlib import Path
+          from urllib.parse import urlencode, urljoin
+          from urllib.request import Request, urlopen
+
+          OUT = Path('recovery-output')
+          OUT.mkdir(exist_ok=True)
+          UA = 'Mozilla/5.0 LakeBlankets-Stage2B-Recovery/1.0'
+
+          def get(url: str, attempts: int = 5) -> bytes:
+              last = None
+              for n in range(attempts):
+                  try:
+                      req = Request(url, headers={'User-Agent': UA, 'Accept': '*/*'})
+                      with urlopen(req, timeout=180) as r:
+                          return r.read()
+                  except Exception as exc:
+                      last = exc
+                      time.sleep(2 ** n)
+              raise RuntimeError(f'GET failed: {url}: {last!r}')
+
+          def get_json(url: str, attempts: int = 5):
+              return json.loads(get(url, attempts))
+
+          report = {'mass_page': {}, 'eea_services': [], 'agol_results': [], 'stockbridge_attempts': [], 'twin': {}}
+
+          # 1. Preserve the official MassGIS metadata page and discover download/service links.
+          page_url = 'https://www.mass.gov/info-details/massgis-data-massdep-hydrography-125000'
+          try:
+              raw = get(page_url)
+              (OUT/'massgis_hydrography_page.html').write_bytes(raw)
+              text = raw.decode('utf-8', 'replace')
+              links = []
+              for href in re.findall(r'href=[\"\']([^\"\']+)', text, flags=re.I):
+                  href = html.unescape(href)
+                  full = urljoin(page_url, href)
+                  if any(x in full.lower() for x in ('hydro', 'download', '.zip', 'arcgis', 'massgis', 'gisftp', 'datahub')):
+                      links.append(full)
+              links = sorted(set(links))
+              report['mass_page'] = {'url': page_url, 'links': links}
+              (OUT/'massgis_discovered_links.json').write_text(json.dumps(links, indent=2))
+          except Exception as exc:
+              report['mass_page'] = {'url': page_url, 'error': repr(exc)}
+
+          # 2. Inspect official EEA ArcGIS Server directories for hydrography services.
+          root = 'https://gis.eea.mass.gov/server/rest/services'
+          try:
+              root_data = get_json(root + '?f=pjson')
+              folders = [''] + list(root_data.get('folders', []))
+              for folder in folders:
+                  url = root + (('/' + folder) if folder else '') + '?f=pjson'
+                  try:
+                      data = root_data if not folder else get_json(url)
+                  except Exception as exc:
+                      report['eea_services'].append({'folder': folder, 'error': repr(exc)})
+                      continue
+                  for svc in data.get('services', []):
+                      name = svc.get('name','')
+                      typ = svc.get('type','')
+                      if any(k in name.lower() for k in ('hydro', 'water', 'wetland')):
+                          service_url = root + '/' + name + '/' + typ
+                          report['eea_services'].append({'name': name, 'type': typ, 'url': service_url})
+          except Exception as exc:
+              report['eea_root_error'] = repr(exc)
+
+          # 3. ArcGIS Online item searches, including MassGIS-hosted and copied official datasets.
+          search_url = 'https://www.arcgis.com/sharing/rest/search'
+          searches = [
+              'title:"HYDRO25K_POLY" AND type:"Feature Service"',
+              '"MassDEP Hydrography" AND type:"Feature Service"',
+              '"Hydrography (1:25,000)" AND type:"Feature Service"',
+              'HYDRO25K_POLY',
+          ]
+          seen = set()
+          for q in searches:
+              try:
+                  data = get_json(search_url + '?' + urlencode({'q': q, 'num': 100, 'f': 'json'}))
+                  for item in data.get('results', []):
+                      if item.get('id') in seen:
+                          continue
+                      seen.add(item.get('id'))
+                      report['agol_results'].append(item)
+              except Exception as exc:
+                  report.setdefault('agol_errors', []).append({'query': q, 'error': repr(exc)})
+          (OUT/'arcgis_online_search_results.json').write_text(json.dumps(report['agol_results'], indent=2))
+
+          # Candidate polygon layers: official EEA services first, then AGOL results, then known complete mirrors.
+          candidate_layers = []
+          for svc in report['eea_services']:
+              if 'url' not in svc:
+                  continue
+              try:
+                  data = get_json(svc['url'] + '?f=pjson')
+                  for lyr in data.get('layers', []):
+                      if 'hydro' in (lyr.get('name','').lower()) or 'water' in (lyr.get('name','').lower()):
+                          candidate_layers.append({'url': svc['url'] + '/' + str(lyr['id']), 'provenance': 'official_eea_server', 'name': lyr.get('name'), 'service': svc})
+              except Exception:
+                  pass
+          for item in report['agol_results']:
+              url = item.get('url')
+              if not url or 'featureserver' not in url.lower():
+                  continue
+              try:
+                  data = get_json(url.rstrip('/') + '?f=pjson')
+                  layers = data.get('layers', [])
+                  if not layers and data.get('type') == 'Feature Layer':
+                      layers = [{'id': None, 'name': data.get('name','')}]
+                  for lyr in layers:
+                      lname = lyr.get('name','')
+                      if 'hydro25k_poly' in lname.lower() or ('hydro' in lname.lower() and 'poly' in lname.lower()):
+                          layer_url = url.rstrip('/') if lyr.get('id') is None else url.rstrip('/') + '/' + str(lyr['id'])
+                          candidate_layers.append({'url': layer_url, 'provenance': 'arcgis_online', 'name': lname, 'item': {k:item.get(k) for k in ('id','owner','title','url','accessInformation','licenseInfo','description')}})
+              except Exception:
+                  pass
+          # Known mirrors of MassGIS HYDRO25K_POLY for fallback discovery.
+          for url in [
+              'https://services.arcgis.com/SvSKeSQcFJgqad7l/ArcGIS/rest/services/20250908_FRCOG_Map3_WFL1/FeatureServer/4',
+              'https://services.arcgis.com/SvSKeSQcFJgqad7l/ArcGIS/rest/services/FRCOG_Survey123_Map_2_WFL1/FeatureServer/5',
+              'https://services3.arcgis.com/0GKKTnAffPqP9bX4/arcgis/rest/services/Rivers_Ocean_Clip/FeatureServer/15',
+          ]:
+              candidate_layers.append({'url': url, 'provenance': 'known_massgis_dataset_mirror', 'name': 'HYDRO25K_POLY'})
+
+          dedup = []
+          urls = set()
+          for c in candidate_layers:
+              if c['url'] not in urls:
+                  urls.add(c['url']); dedup.append(c)
+          candidate_layers = dedup
+          (OUT/'stockbridge_candidate_layers.json').write_text(json.dumps(candidate_layers, indent=2))
+
+          # 4. Query every candidate layer for Stockbridge Bowl / Mahkeenac.
+          stockbridge_features = []
+          chosen = None
+          where_options = [
+              "UPPER(NAME) LIKE '%STOCKBRIDGE%' OR UPPER(NAME) LIKE '%MAHKEENAC%'",
+              "UPPER(GNIS_NAME) LIKE '%STOCKBRIDGE%' OR UPPER(GNIS_NAME) LIKE '%MAHKEENAC%'",
+              "UPPER(WATERBODY_NAME) LIKE '%STOCKBRIDGE%' OR UPPER(WATERBODY_NAME) LIKE '%MAHKEENAC%'",
+          ]
+          for cand in candidate_layers:
+              try:
+                  meta = get_json(cand['url'] + '?f=pjson')
+                  fields = {f.get('name','').upper() for f in meta.get('fields', [])}
+                  oid = meta.get('objectIdField') or meta.get('objectIdFieldName')
+                  local_wheres = []
+                  if 'NAME' in fields: local_wheres.append(where_options[0])
+                  if 'GNIS_NAME' in fields: local_wheres.append(where_options[1])
+                  if 'WATERBODY_NAME' in fields: local_wheres.append(where_options[2])
+                  for where in local_wheres:
+                      params = {'where': where, 'outFields': '*', 'returnGeometry':'true', 'outSR':'4326', 'geometryPrecision':'9', 'f':'geojson'}
+                      qurl = cand['url'].rstrip('/') + '/query?' + urlencode(params)
+                      try:
+                          raw = get(qurl, 3)
+                          data = json.loads(raw)
+                          count = len(data.get('features', []))
+                          report['stockbridge_attempts'].append({'layer': cand, 'where': where, 'count': count, 'query_url': qurl})
+                          if count:
+                              stockbridge_features = data['features']
+                              chosen = {'layer': cand, 'where': where, 'query_url': qurl, 'layer_metadata': meta, 'object_id_field': oid}
+                              (OUT/'stockbridge-bowl-lake-mahkeenac.geojson').write_bytes(raw)
+                              break
+                      except Exception as exc:
+                          report['stockbridge_attempts'].append({'layer': cand, 'where': where, 'error': repr(exc), 'query_url': qurl})
+                  if stockbridge_features:
+                      break
+              except Exception as exc:
+                  report['stockbridge_attempts'].append({'layer': cand, 'metadata_error': repr(exc)})
+
+          if stockbridge_features:
+              meta = {'lake_id':'LB-MA-STOCKBRIDGE-BOWL-LAKE-MAHKEENAC','lake_name':'Stockbridge Bowl / Lake Mahkeenac','candidate_count':len(stockbridge_features),'chosen_source':chosen,'status':'CANDIDATE_REVIEW_REQUIRED'}
+              (OUT/'stockbridge-bowl-lake-mahkeenac-metadata.json').write_text(json.dumps(meta, indent=2))
+          else:
+              (OUT/'stockbridge-bowl-lake-mahkeenac-error.json').write_text(json.dumps({'status':'NOT_FOUND','attempts':report['stockbridge_attempts']}, indent=2))
+
+          # 5. Correct Twin Lakes query from official Connecticut DEEP service.
+          twin_layer = 'https://services1.arcgis.com/FjPcSmEFuDYlIdKC/ArcGIS/rest/services/Connecticut_Hydrography_Set/FeatureServer/1'
+          twin_where = "UPPER(LAKE) LIKE '%WASHIN%' OR UPPER(NAMED_POLY) LIKE '%WASHIN%'"
+          try:
+              qurl = twin_layer + '/query?' + urlencode({'where':twin_where,'outFields':'*','returnGeometry':'true','outSR':'4326','geometryPrecision':'9','f':'geojson'})
+              raw = get(qurl)
+              data = json.loads(raw)
+              if data.get('error'): raise RuntimeError(data['error'])
+              (OUT/'twin-lakes-washinee-washining.geojson').write_bytes(raw)
+              report['twin'] = {'layer':twin_layer,'where':twin_where,'query_url':qurl,'candidate_count':len(data.get('features', [])),'status':'CANDIDATE_REVIEW_REQUIRED'}
+              (OUT/'twin-lakes-washinee-washining-metadata.json').write_text(json.dumps(report['twin'], indent=2))
+          except Exception as exc:
+              report['twin'] = {'layer':twin_layer,'where':twin_where,'error':repr(exc)}
+
+          (OUT/'recovery_report.json').write_text(json.dumps(report, indent=2))
+          print(json.dumps({'stockbridge_count': len(stockbridge_features), 'twin': report['twin'], 'eea_service_hits':len(report['eea_services']), 'agol_results':len(report['agol_results'])}, indent=2))
+          PY
+
+      - name: Upload recovery results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: lakeblankets-geometry-recovery
+          path: recovery-output/
+          if-no-files-found: error
+          retention-days: 7
